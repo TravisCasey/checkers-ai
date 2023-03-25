@@ -38,8 +38,57 @@ indexing:
 Team 1 turn represented by 1 while Team 2 turn represented by -1.
  """
 
+def piece_translator(piece_number):
+    # Function takes in a code for a piece and returns the corresponding character, as described above. 
+    # If the number is not -2, -1, 0, 1, 2, returns error.
+    match piece_number:
+        case -2:
+            return "X"
+        case -1:
+            return "x"
+        case 0:
+            return " "
+        case 1:
+            return "o"
+        case 2:
+            return "O"
+        case other:
+            return "error"
 
-class gamestate():
+
+def vizualize_board(board):
+    # Function takes in a board state encoded as described above (a length 32 list with -2, -1, 0, 1, 2 as entries)
+    # and returns a string visualizing it as a checkers board.
+    # If the list encoding the board is not valid, returns "error"
+    if len(board) != 32:
+        return "error"
+    board_string = ""
+    for row in range(8):
+        for column in range(4):
+            if row % 2 == 0:
+                board_string += "| |" + piece_translator(board[row * 4 + column])
+            else:
+                board_string += "|" + piece_translator(board[row * 4 + column]) + "| "
+        if row != 7:
+            board_string += "|\n"
+        else:
+            board_string += "|"
+    return board_string
+
+
+
+class Gamestate():
+
+    """ The Gamestate class represents the board and some information needed to accurately and completely represent a state of the game.
+    The properties are:
+        - board: a list with 32 integers representing the position of the pieces as described above
+        - turn: an integer that takes on values 1 and -1; 1 indicates team 1 while -1 indicates team 2
+        - continuation: multiple jumps are handled as multiple turns in which the turn does not move to the next team. However, 
+          if there are multiple pieces that can jump, if one piece previously made a jump, it must continue its multiple jump. Thus
+          we need an indication of which piece must move next. This property is a positive integer; values 0 - 31 indicate the index
+          of the piece that must continue jumping, while -1 indicates there is no such piece.    
+    """
+    
     def __init__(self):
         self.board = [ 1,  1,  1,  1,
                        1,  1,  1,  1,
@@ -48,8 +97,9 @@ class gamestate():
                        0,  0,  0,  0,
                       -1, -1, -1, -1,
                       -1, -1, -1, -1,
-                      -1, -1, -1, -1,]  # Starting board
+                      -1, -1, -1, -1]  # Starting board
         self.turn = 1                   # Team 1 goes first
+        self.continuation = -1
 
     def get_board(self):
         return self.board
@@ -57,21 +107,5 @@ class gamestate():
     def get_turn(self):
         return self.turn
     
-    def viz_board(self):
-        # This method returns the current board state as a text string that looks like
-        # a checkers board.
-        
-        board_string = ""
-
-        for row in range(8):
-            for column in range(4):
-                if row % 2 == 0:
-                    board_string += "| |"
-    
 
 
-# Test Code
-
-game = gamestate()
-print(game.get_board())
-print(game.get_turn())
