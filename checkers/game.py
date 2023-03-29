@@ -160,9 +160,8 @@ class Gamestate():
           of the piece that must continue jumping, while -1 indicates there is no such piece.    
     """
 
-
     def __init__(self):
-        self.board = [ 1,  1,  1,  1,
+        self._board = [ 1,  1,  1,  1,
                        1,  1,  1,  1,
                        1,  1,  1,  1,
                        0,  0,  0,  0,
@@ -170,15 +169,15 @@ class Gamestate():
                       -1, -1, -1, -1,
                       -1, -1, -1, -1,
                       -1, -1, -1, -1]  # Starting board
-        self.turn = 1                  # Team 1 goes first
-        self.continuation = -1
+        self._turn = 1                  # Team 1 goes first
+        self._continuation = -1
 
+    @property
+    def board(self):
+        return self._board
 
-    def get_board(self):
-        return self.board
-    
-
-    def set_board(self, new_board):
+    @board.setter
+    def board(self, new_board):
         """ This method sets the board to the given new_board, after first checking that the new_board is a list of 32
             elements consisting of (-2, -1, 0, 1, 2). It also checks that no team 2 man is at the top of the board 
             and no team 1 man is at the bottom of the board (should be a king). 
@@ -197,27 +196,26 @@ class Gamestate():
                 if new_board[end_position] == -1 or new_board[31 - end_position] == 1:
                     valid_board = False
         if valid_board:
-            self.board = new_board
-    
+            self._board = new_board
 
-    def get_turn(self):
-        return self.turn
-    
+    @property
+    def turn(self):
+        return self._turn
 
-    def set_turn(self, new_turn):
+    @turn.setter
+    def turn(self, new_turn):
         if new_turn in (-1, 1):
-            self.turn = new_turn
-    
+            self._turn = new_turn
 
-    def get_continuation(self):
-        return self.continuation
+    @property
+    def continuation(self):
+        return self._continuation
     
-
-    def set_continuation(self, new_continuation):
+    @continuation.setter
+    def continuation(self, new_continuation):
         if new_continuation in range(-1, 32):
-            self.continuation = new_continuation
+            self._continuation = new_continuation
     
-
     def is_game_over(self): # This should be moved to the overarching game object
         # Also need to check for 40 move rule and 3 piece repetition rule. And if forced into a position with no valid moves
         """ This method checks if the current gamestate is an end position for a game, i.e., whether either team has won.
@@ -255,7 +253,6 @@ class Gamestate():
         else:
             # This indicates we have a valid board yet neither team has won
             return 0
-        
     
     def piece_can_jump(self, position, move_direction):
         """ This method returns True if there is a piece in the given position that can jump in the given direction
@@ -300,7 +297,6 @@ class Gamestate():
             return False
         else:
             return False
-        
     
     def is_valid(self, position, move_direction):
         """ This method takes in a positive integer move_position and an integer move_direction.
@@ -371,19 +367,26 @@ class CheckersMatch():
     """
 
     def __init__(self):
-        current_gamestate = Gamestate()
-        turn_count = 0
-        team_1_moves = []
-        team_2_moves = []
+        self._current_gamestate = Gamestate()
+        self._turn_count = 0
+        self._team_1_moves = []
+        self._team_2_moves = []
 
+    @property
+    def current_gamestate(self):
+        return self._current_gamestate
     
-    def get_board(self);
-        return self.current_gamestate.get_board()
+    @property
+    def turn_count(self):
+        return self._turn_count
 
-
-    def get_team_1_moves(self):
-        return self.team_1_moves
-
+    @property
+    def team_1_moves(self):
+        return self._team_1_moves
+    
+    @property
+    def team_2_moves(self):
+        return self._team_2_moves
     
     def update_gamestate(self, position, move_direction):
         """ This method takes in an integer position in 0 - 31 corresponding to a square on the board and an integer move_direction 

@@ -70,32 +70,32 @@ class TestGame(unittest.TestCase):
         # Needs to be rewritten and moved to game object
         test_state = checkers.game.Gamestate()
         self.assertEqual(test_state.is_game_over(), 0)
-        test_state.set_board([    1,  1,  1,  1,
+        test_state.board =   [    1,  1,  1,  1,
                                   0,  1,  0,  2,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                   1,  1,  2,  0,
-                                  0,  0,  0,  2])
+                                  0,  0,  0,  2]
         self.assertEqual(test_state.is_game_over(), 1)
-        test_state.set_board([   -2, -2,  0,  0,
+        test_state.board =   [   -2, -2,  0,  0,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                  -1, -1, -1,  0,
-                                  0,  0,  0, -1])
+                                  0,  0,  0, -1]
         self.assertEqual(test_state.is_game_over(), -1)
-        test_state.set_board([   -2, -2,  0,  0,
+        test_state.board =   [   -2, -2,  0,  0,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                   0,  0,  1,  0,
                                   0,  0,  0,  0,
                                   0,  0,  0,  0,
                                  -1,  1, -1,  0,
-                                  0,  0,  0, -1])
+                                  0,  0,  0, -1]
         self.assertEqual(test_state.is_game_over(), 0)
 
 
@@ -117,14 +117,14 @@ class TestGame(unittest.TestCase):
         
     def test_can_jump(self):
         test_state = checkers.game.Gamestate()
-        test_state.set_board([  0,  1,  1,  1,      # | | | |o| |o| |o|
-                                0,  1,  0,  2,      # | | |o| | | |O| |
-                                0, -1, -1,  0,      # | | | |x| |x| | |
-                                0,  0,  0,  0,      # | | | | | | | | |
-                                0, -1, -1, -1,      # | | | |x| |x| |x|
-                                0,  0,  1,  0,      # | | | | |o| | | |
-                               -1, -1, -2,  0,      # | |x| |x| |X| | |
-                                0,  0,  0,  2])     # | | | | | | |O| |
+        test_state.board = [ 0,  1,  1,  1,      # | | | |o| |o| |o|
+                             0,  1,  0,  2,      # | | |o| | | |O| |
+                             0, -1, -1,  0,      # | | | |x| |x| | |
+                             0,  0,  0,  0,      # | | | | | | | | |
+                             0, -1, -1, -1,      # | | | |x| |x| |x|
+                             0,  0,  1,  0,      # | | | | |o| | | |
+                            -1, -1, -2,  0,      # | |x| |x| |X| | |
+                             0,  0,  0,  2]      # | | | | | | |O| |
         self.assertEqual(test_state.piece_can_jump(0, 0), False)
         self.assertEqual(test_state.piece_can_jump(0, 2), False)
         self.assertEqual(test_state.piece_can_jump(1, 1), False)
@@ -151,45 +151,45 @@ class TestGame(unittest.TestCase):
 
     def test_is_valid(self):
         test_state = checkers.game.Gamestate()
-        test_state.set_board([ -2,  1,  1,  0,      # | |X| |o| |o| | |
-                                0,  0,  0,  2,      # | | | | | | |O| |
-                                0,  0,  0,  0,      # | | | | | | | | |
-                                0, -1,  0,  0,      # | | |x| | | | | |
-                                0,  0,  0,  0,      # | | | | | | | | |
-                                0,  0,  1,  0,      # | | | | |o| | | |
-                               -1,  0,  0,  0,      # | |x| | | | | | |
-                                0,  0,  0,  2])     # | | | | | | |O| |
-        test_state.set_turn(-1)
+        test_state.board = [-2,  1,  1,  0,      # | |X| |o| |o| | |
+                             0,  0,  0,  2,      # | | | | | | |O| |
+                             0,  0,  0,  0,      # | | | | | | | | |
+                             0, -1,  0,  0,      # | | |x| | | | | |
+                             0,  0,  0,  0,      # | | | | | | | | |
+                             0,  0,  1,  0,      # | | | | |o| | | |
+                            -1,  0,  0,  0,      # | |x| | | | | | |
+                             0,  0,  0,  2]      # | | | | | | |O| |
+        test_state.turn = -1
         self.assertEqual(test_state.is_valid(0, 0), False)
         self.assertEqual(test_state.is_valid(0, 2), True)
         self.assertEqual(test_state.is_valid(0, 3), True)
-        test_state.set_turn(1)
+        test_state.turn = 1
         self.assertEqual(test_state.is_valid(1, 2), True)
         self.assertEqual(test_state.is_valid(1, 3), True)
         self.assertEqual(test_state.is_valid(2, 3), False)
-        test_state.set_turn(-1)
+        test_state.turn = -1
         self.assertEqual(test_state.is_valid(1, 3), False)
         self.assertEqual(test_state.is_valid(3, 3), False)
         self.assertEqual(test_state.is_valid(-3, 3), False)
         self.assertEqual(test_state.is_valid(2, 5), False)
         self.assertEqual(test_state.is_valid(13, 1), True)
-        test_state.set_continuation(24)
+        test_state.continuation = 24
         self.assertEqual(test_state.is_valid(13, 1), False)
         self.assertEqual(test_state.is_valid(24, 1), True)
-        test_state.set_board([ -2,  1,  1,  0,      # | |X| |o| |o| | |
-                                0,  1,  0,  2,      # | | |o| | | |O| |
-                                0,  0,  0,  0,      # | | | | | | | | |
-                                0, -1,  0,  0,      # | | |x| | | | | |
-                                0,  0,  -2,  0,     # | | | | | |X| | |
-                                0,  0,  1,  0,      # | | | | |o| | | |
-                               -1, -1,  0,  0,      # | |x| |x| | | | |
-                                0,  0,  0,  2])     # | | | | | | |O| |
-        test_state.set_continuation(-1)
+        test_state.board = [-2,  1,  1,  0,      # | |X| |o| |o| | |
+                             0,  1,  0,  2,      # | | |o| | | |O| |
+                             0,  0,  0,  0,      # | | | | | | | | |
+                             0, -1,  0,  0,      # | | |x| | | | | |
+                             0,  0, -2,  0,      # | | | | | |X| | |
+                             0,  0,  1,  0,      # | | | | |o| | | |
+                            -1, -1,  0,  0,      # | |x| |x| | | | |
+                             0,  0,  0,  2]      # | | | | | | |O| |
+        test_state.continuation = -1
         self.assertEqual(test_state.is_valid(0, 2), False)
         self.assertEqual(test_state.is_valid(0, 3), True)
         self.assertEqual(test_state.is_valid(18, 2), False)
         self.assertEqual(test_state.is_valid(25, 0), False)
-        test_state.set_turn(1)
+        test_state.turn = 1
         self.assertEqual(test_state.is_valid(22, 2), True)
         self.assertEqual(test_state.is_valid(22, 1), False)
 
