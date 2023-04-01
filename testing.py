@@ -1,5 +1,5 @@
 import unittest
-import checkers.game
+import checkers
 
 
 class TestGame(unittest.TestCase):
@@ -61,7 +61,7 @@ class TestGame(unittest.TestCase):
                                             0,  0,  3,  0,
                                             1,  2,  0,  0,
                                             0,  0,  0, -1,
-                                           -1,  0,  0, 0])
+                                           -1,  0,  0,  0])
 
     def test_target_position(self):
         self.assertEqual(checkers.game.target_position(0, 2), 4)
@@ -118,6 +118,15 @@ class TestGame(unittest.TestCase):
         with self.assertRaises(ValueError):
             test_state.piece_can_jump(33, 2)
             test_state.piece_can_jump(5, -2)
+        test_state.board = [ 0,  0,  1,  1,      # | | | | | |o| |o|
+                             0, -1,  0,  0,      # | | |x| | | | | |
+                             1,  0,  0,  1,      # | |o| | | | | |o|
+                             0,  0,  0,  0,      # | | | | | | | | |
+                             0, -1,  0,  0,      # | | | |x| | | | |
+                            -1,  0, -1,  0,      # |x| | | |x| | | |
+                            -1,  0,  0,  1,      # | |x| | | | | |o|
+                            -1, -1, -1,  0]      # |x| |x| |x| | | |
+        self.assertEqual(test_state.piece_can_jump(5, 2), False)
 
 
     def test_is_valid(self):
@@ -250,4 +259,6 @@ class TestGame(unittest.TestCase):
         
 
 if __name__ == "__main__":
-    unittest.main()
+    #unittest.main()
+    test_match = checkers.game.CheckersMatch()
+    test_match.start()

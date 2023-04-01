@@ -1,3 +1,5 @@
+from checkers import players as players
+
 """ 
 Initial checker board:
 
@@ -261,19 +263,19 @@ class Gamestate():
             return False
         elif self.board[position] == 2:
             # Team 1 king can jump any direction
-            for move_direction in (0, 1, 2, 3):
+            if move_direction in (0, 1, 2, 3):
                 if self.board[jump] in (-1, -2) and self.board[target] == 0:
                     return True
             return False
         elif self.board[position] == -1:
             # Team 2 man can jump northwest or northeast
-            for move_direction in (0, 1):
+            if move_direction in (0, 1):
                 if self.board[jump] in (1, 2) and self.board[target] == 0:
                     return True
             return False
         elif self.board[position] == -2:
             # Team 2 king can jump any direction
-            for move_direction in (0, 1, 2, 3):
+            if move_direction in (0, 1, 2, 3):
                 if self.board[jump] in (1, 2) and self.board[target] == 0:
                     return True
             return False
@@ -373,7 +375,9 @@ class CheckersMatch():
         self._current_gamestate = Gamestate()
         self._team_1_moves = []
         self._team_2_moves = []
-        self._turns_since_capture = 0 
+        self._turns_since_capture = 0
+        self._team_1_player = players.Player()
+        self._team_2_player = players.Player()
 
     @property
     def current_gamestate(self):
@@ -442,6 +446,26 @@ class CheckersMatch():
         if type(new_count) is not int:
             raise TypeError('Expected new_count input as an integer')
         self._turns_since_capture = new_count
+
+    @property
+    def team_1_player(self):
+        return self._team_1_player
+    
+    @team_1_player.setter
+    def team_1_player(self, new_player):
+        if not issubclass(new_player, players.Player):
+            raise TypeError('Expected new_player input as a Player instance or subclass')
+        self._team_1_moves = new_player
+
+    @property
+    def team_2_player(self):
+        return self._team_2_player
+    
+    @team_2_player.setter
+    def team_2_player(self, new_player):
+        if not issubclass(new_player, players.Player):
+            raise TypeError('Expected new_player input as a Player instance or subclass')
+        self._team_2_moves = new_player
     
     def get_turn_count(self, team):
         """Returns the number of turns taken by the designated team, as the length of the respective moves list
@@ -559,7 +583,7 @@ class CheckersMatch():
         """
 
         # Check to see if current player has no valid moves.
-        if len(self._current_gamestate.get_valid_moves()) == 0:
+        if len(self.current_gamestate.get_valid_moves()) == 0:
             return -1 * self.current_gamestate.turn
         
         # If the current player has legal moves, the only way the game has ended is a draw.
@@ -569,9 +593,30 @@ class CheckersMatch():
         
         # Current plays has valid moves and the game has not drawn. Thus the game continues.
         return 2
+    
+    def play_loop(self):
+        while True:
+            result = self.is_game_over()
+            if result != 2:
+                return result
+        
+            if self.current_gamestate.turn == 1:
+                current_player = self.team_1_player
+            else:
+                current_player = self.team_2_player
+            
+            next_move = current_player.get_next_turn(visualize_board(self.current_gamestate.board))
+            move_result = self.update_gamestate(next_move[0], next_move[1])
+            if move_result == 0:
+                print('Invalid move, please try again.')
+            elif move_result == 2:
+                print('Jump again.')
+    
+    def start(self):
+        print(self.play_loop())
         
 
-            
+        
             
 
 
