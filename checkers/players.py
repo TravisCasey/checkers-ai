@@ -1,11 +1,13 @@
+import random
 """ This file contains the Player class, and various subclasses. These subclasses make up the various ways moves are chosen. 
 """
 
 class Player():
     """ The Player"""
+    name = "Manual Player"
 
-    def __init__(self):
-        self.name = 'manual'
+    def __init__(self, gamestate):
+        self.gamestate = gamestate
 
     def get_next_turn(self, message = ''):
         print(message)
@@ -24,3 +26,13 @@ class Player():
                 print('Enter a direction integer between 0 and 3.')
 
         return [position, move_direction]
+    
+
+class RandomPlayer(Player):
+    name = "Random Player"
+
+    def get_next_turn(self, message = ''):
+        move_list = self.gamestate.get_valid_moves()
+        return move_list[random.randrange(len(move_list))]
+
+

@@ -1,5 +1,3 @@
-from checkers import players as players
-
 """ 
 Initial checker board:
 
@@ -371,13 +369,13 @@ class CheckersMatch():
     where moves 2, 3, etc. are a series of jumps in the same turn, should they exist.
     """
 
-    def __init__(self):
+    def __init__(self, team_1_player, team_2_player):
         self._current_gamestate = Gamestate()
         self._team_1_moves = []
         self._team_2_moves = []
         self._turns_since_capture = 0
-        self._team_1_player = players.Player()
-        self._team_2_player = players.Player()
+        self.team_1_player = team_1_player
+        self.team_2_player = team_2_player
 
     @property
     def current_gamestate(self):
@@ -450,23 +448,7 @@ class CheckersMatch():
     @property
     def team_1_player(self):
         return self._team_1_player
-    
-    @team_1_player.setter
-    def team_1_player(self, new_player):
-        if not issubclass(new_player, players.Player):
-            raise TypeError('Expected new_player input as a Player instance or subclass')
-        self._team_1_moves = new_player
 
-    @property
-    def team_2_player(self):
-        return self._team_2_player
-    
-    @team_2_player.setter
-    def team_2_player(self, new_player):
-        if not issubclass(new_player, players.Player):
-            raise TypeError('Expected new_player input as a Player instance or subclass')
-        self._team_2_moves = new_player
-    
     def get_turn_count(self, team):
         """Returns the number of turns taken by the designated team, as the length of the respective moves list
         if the input is not 1 or -1, raises the appropriate error.
@@ -524,7 +506,7 @@ class CheckersMatch():
         if not self.current_gamestate.piece_can_jump(position, move_direction):
             # Piece cannot jump - a simple move
             target = target_position(position, move_direction)
-            if self.current_gamestate.board[position] == self.current_gamestate.turn and (target // 4) == (0, 7):
+            if self.current_gamestate.board[position] == self.current_gamestate.turn and (target // 4) in (0, 7):
                 # Piece becomes king
                 self.current_gamestate.board[target] = self.current_gamestate.board[position] * 2
             else:
