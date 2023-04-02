@@ -5,9 +5,8 @@ import random
 class Player():
     """ The Player"""
     name = "Manual Player"
-
-    def __init__(self, gamestate):
-        self.gamestate = gamestate
+    def __init__(self):
+        self.gamestate = None
 
     def get_next_turn(self, message = ''):
         print(message)

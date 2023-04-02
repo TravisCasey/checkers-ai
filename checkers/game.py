@@ -445,10 +445,6 @@ class CheckersMatch():
             raise TypeError('Expected new_count input as an integer')
         self._turns_since_capture = new_count
 
-    @property
-    def team_1_player(self):
-        return self._team_1_player
-
     def get_turn_count(self, team):
         """Returns the number of turns taken by the designated team, as the length of the respective moves list
         if the input is not 1 or -1, raises the appropriate error.
@@ -591,11 +587,11 @@ class CheckersMatch():
             move_result = self.update_gamestate(next_move[0], next_move[1])
             if move_result == 0:
                 print('Invalid move, please try again.')
-            elif move_result == 2:
-                print('Jump again.')
     
     def start(self):
-        print(self.play_loop())
+        self.team_1_player.gamestate = self.current_gamestate
+        self.team_2_player.gamestate = self.current_gamestate
+        return self.play_loop()
         
 
         
