@@ -1,5 +1,14 @@
-""" 
-Initial checker board:
+""" This module handles most of the backend logic of playing a game of
+checkers. An instance of the CheckersMatch class fetches moves from its
+player attributes, which should be instances of the Player class or a
+subclass thereof in the players module. It also has an associated
+instance of the Gamestate object, which tracks and updates the board and
+other related information.
+"""
+# TODO: Add piece_count method that returns the number of each piece as
+# a tuple.
+
+""" Initial checker board:
 
 | |o| |o| |o| |o|
 |o| |o| |o| |o| |
@@ -13,16 +22,15 @@ Initial checker board:
 Team 1 are the o/O pieces while Team 2 are the x/X pieces
 
 Piece Representation:
-
-Team 1 Man  o  1
-Team 1 King O  2
-Team 2 Man  x  -1
-Team 2 King X  -2
-
+Team 1 Man   o   1
+Team 1 King  O   2
+Team 2 Man   x  -1
+Team 2 King  X  -2
 Blank squares are represented by 0.
 
-As checker pieces can only move on 32 of the 64 squares, we collapse the board and use the following
-indexing:
+As checker pieces can only move on 32 of the 64 squares, we collapse the
+board and use the following indexing to represent the board as a list,
+with the above piece representation:
 
 | 0| 1| 2| 3|
 | 4| 5| 6| 7|
@@ -33,568 +41,487 @@ indexing:
 |24|25|26|27|
 |28|29|30|31|
 
-Team 1 turn represented by 1 while Team 2 turn represented by -1.
+Team 1 turn is represented by 1 while Team 2 turn is represented by -1.
+A turn refers to both teams moving, while a ply is a half-turn, i.e.,
+just one team moves.
+
+Moves are represented by tuples (pos, dir), where pos is an integer
+0 - 31 that refers to the position of the piece to be moved as described
+above, and dir is an integer 0 - 3 referring to directions:
+0 - Northeast,
+1 - Northwest,
+2 - Southwest,
+3 - Southeast,
+when the board is oriented as above.
+
+Singles moves with multiple jumps are called continuation. The move
+input is handled as if they are multiple moves, that is, each jump in
+the sequence is its own tuple. At times when the entire multi-jump move
+should be represented together, these tuples are concatenated in order,
+forming a tuple with even length greater than 2, alternating positions
+and directions.
+
+When a piece has jumped and can jump again, the same team is then
+required to jump again (unless the original piece became a king). In
+this case, the Gamestate attribute cont is set to the position
+of the piece that must move again; it's default value is None when there
+is no continuation. Note in this case, the turn does not pass to the
+next player until the continuation is over.
+
+The conditions for winning are forcing the opponent into a situation in
+which they have no valid moves. The typical method is to simply
+eliminate all the opponent's pieces, however this is not the only
+possibility. A draw occurs when 40 turns have passed without a capture
+(i.e. both players have moved 40 times since the last capture).
  """
 
 
-def piece_translator(piece):
-    """ Function takes in a code for a piece and returns the corresponding character, as described above. 
-    If the input is not -2, -1, 0, 1, 2, raises a TypeError or ValueError as needed. 
-    """
-    if type(piece) is not int:
-        raise TypeError('Expects piece input as an integer')
-    match piece:
-        case -2:
-            return 'X'
-        case -1:
-            return 'x'
-        case 0:
-            return ' '
-        case 1:
-            return 'o'
-        case 2:
-            return 'O'
-        case other:
-            raise ValueError('Valid piece inputs are -2, -1, 0, 1, 2')
-
-
-def visualize_board(board):
-    """ Function takes in a board state encoded as described above (a length 32 list with -2, -1, 0, 1, 2 as entries)
-    and returns a string visualizing it as a checkers board.
-    If the list encoding the board is not valid, raises TypeError or ValueError as needed. 
-    """
-
-    # Checks for valid board encoding
-    if type(board) is not list:
-        raise TypeError('Expects board input as a list of length 32')
-    elif len(board) != 32:
-        raise TypeError('Expects board input as a list of length 32')
-    else:
-        for piece in board:
-            if piece not in (-2, -1, 0, 1, 2):
-                raise ValueError('Valid entries in board input are -2, -1, 0, 1, 2')
-    
-    # Constructs board string
-    board_string = ''
-    for row in range(8):
-        for column in range(4):
-            if row % 2 == 0:
-                board_string += '| |' + piece_translator(board[row * 4 + column])
-            else:
-                board_string += '|' + piece_translator(board[row * 4 + column]) + '| '
-        if row != 7:
-            board_string += '|\n'
-        else:
-            board_string += '|'
-    return board_string
-
-
-def target_position(position, move_direction):
-    """ This method takes in an integer 0 - 31 move_position and an integer 0 - 3 move_direction.
-    The move_direction corresponds to the following directions, when the board is illustrated as shown above:
-    0 - northeast
-    1 - northwest
-    2 - southwest
-    3 - southeast.
-    This method returns the index for the square corresponding to this move (not considering jumps) if it exists,
-    or returns -1 if the square does not exist (i.e. would not be on the board). If either input is invalid, 
-    raises TypeError or ValueError as needed.
+def target_pos(pos, dir):
+    """ This method takes in an integer 0 - 31 pos denoting the position
+    of the piece to move and an integer 0 - 3 dir denoting the direction
+    the piece should move. This method returns the index for the square
+    corresponding to this move (not considering jumps) if it exists, or
+    returns None if the square does not exist (i.e. would not be on the
+    board). If either input is invalid, raises TypeError or ValueError
+    as needed.
     """
 
     # check for invalid inputs
-    if type(position) is not int:
-        raise TypeError('Expects position input as an integer')
-    elif type(move_direction) is not int:
-        raise TypeError('Expects move_direction input as an integer')
-    elif position not in range(32):
-        raise ValueError('Valid position inputs are integers 0 to 31')
-    elif move_direction not in range(4):
-        raise ValueError('Valid move_direction inputs are 0, 1, 2, 3')
+    if type(pos) is not int:
+        raise TypeError('Expects pos input as an integer')
+    elif type(dir) is not int:
+        raise TypeError('Expects dir input as an integer')
+    elif pos not in range(32):
+        raise ValueError('Valid pos inputs are integers 0 to 31')
+    elif dir not in range(4):
+        raise ValueError('Valid dir inputs are 0, 1, 2, 3')
 
-    row = position // 4
-    column = position % 4
+    row = pos // 4
+    column = pos % 4
 
-    if row % 2 == 0:
-        if row == 0 and (move_direction == 0 or move_direction == 1):
-            # off board
-            return -1
-        elif column == 3 and (move_direction == 0 or move_direction == 3):
-            # off board
-            return -1
-        elif move_direction == 0:
-            # Move northeast one square
-            return (row - 1) * 4 + column + 1
-        elif move_direction == 1:
-            # Move northwest one square
-            return (row - 1) * 4 + column
-        elif move_direction == 2:
-            # Move southwest one square
-            return (row + 1) * 4 + column
-        elif move_direction == 3:
-            # Move southeast one square
-            return (row + 1) * 4 + column + 1
-    elif row % 2 == 1:
-        if row == 7 and (move_direction == 2 or move_direction == 3):
-            # off board
-            return -1
-        elif column == 0 and (move_direction == 1 or move_direction == 2):
-            # off board
-            return -1
-        elif move_direction == 0:
-            # Move northeast one square
-            return (row - 1) * 4 + column
-        elif move_direction == 1:
-            # Move northwest one square
-            return (row - 1) * 4 + column - 1
-        elif move_direction == 2:
-            # Move southwest one square
-            return (row + 1) * 4 + column - 1
-        elif move_direction == 3:
-            # Move southeast one square
-            return (row + 1) * 4 + column       
+    # The outer conditions subdivide into even rows and columns as their
+    # return formulas are different. It also checks that the pieces
+    # would not move off board.
+    if (row % 2 == 0
+            and not (row == 0 and (dir in (0, 1)))
+            and not (column == 3 and (dir in (0, 3)))):
+        match dir:
+            case 0:
+                return 4*(row-1) + column + 1
+            case 1:
+                return 4*(row-1) + column
+            case 2:
+                return 4*(row+1) + column
+            case 3:
+                return 4*(row+1) + column + 1
+    elif (row % 2 == 1
+            and not (row == 7 and (dir in (2, 3)))
+            and not (column == 0 and (dir in (1, 2)))):
+        match dir:
+            case 0:
+                return 4*(row-1) + column
+            case 1:
+                return 4*(row-1) + column - 1
+            case 2:
+                return 4*(row+1) + column - 1
+            case 3:
+                return 4*(row+1) + column
 
 
 class Gamestate():
-    """ The Gamestate class represents the board and some information needed to accurately and completely represent a state of the game.
-    The attributes are:
-        - board: a list with 32 integers representing the position of the pieces as described above
-        - turn: an integer that takes on values 1 and -1; 1 indicates team 1 while -1 indicates team 2
-        - continuation: multiple jumps are handled as multiple turns in which the turn does not move to the next team. However, 
-          if there are multiple pieces that can jump, if one piece previously made a jump, it must continue its multiple jump. Thus,
-          we need an indication of which piece must move next. This property is an integer 0 - 31 indicating the index
-          of the piece that must continue jumping, while -1 indicates that there is no such piece.    
+    """ The Gamestate class represents the board and some information
+    needed to accurately and completely represent a current state of the
+    game of checkers. The attributes are:
+    - board: a list with 32 integers representing the position of the
+      pieces as described above.
+    - turn: an integer that takes on values 1 and -1; 1 indicates team 1
+      while -1 indicates team 2.
+    - cont: multiple jumps are handled as multiple turns in
+      which the turn does not move to the next team. This property is an
+      integer 0 - 31 indicating the index of the piece that must
+      continue jumping, while None indicates that there is continuation.
+    - ply_count: The number of half-turns taken (individual moves).
+    - plys_since_capture: Tracks the number of half-turns since the last
+    capture to implement the 40 turn draw rule.
     """
+
+    piece_dirs = {
+        1: (2, 3),
+        2: (0, 1, 2, 3),
+        -1: (0, 1),
+        -2: (0, 1, 2, 3),
+        0: ()
+    }
+    team_pieces = {
+        1: (1, 2),
+        -1: (-1, -2)
+    }
+    opp_pieces = {
+        1: (-1, -2),
+        2: (-1, -2),
+        -1: (1, 2),
+        -2: (1, 2)
+    }
+    piece_reps = {
+        1: 'o',
+        2: 'O',
+        -1: 'x',
+        -2: 'X',
+        0: ' '
+    }
 
     def __init__(self):
-        self._board = [ 1,  1,  1,  1,
-                        1,  1,  1,  1,
-                        1,  1,  1,  1,
-                        0,  0,  0,  0,
-                        0,  0,  0,  0,
-                       -1, -1, -1, -1,
-                       -1, -1, -1, -1,
-                       -1, -1, -1, -1]  # Starting board
-        self._turn = 1                  # Team 1 goes first
-        self._continuation = -1
+        self.board = [1,  1,  1,  1,
+                      1,  1,  1,  1,
+                      1,  1,  1,  1,
+                      0,  0,  0,  0,
+                      0,  0,  0,  0,
+                      -1, -1, -1, -1,
+                      -1, -1, -1, -1,
+                      -1, -1, -1, -1]
+        self.turn = 1
+        self.cont = None
+        self.ply_count = 0
+        self.plys_since_capture = 0
 
     @property
-    def board(self):
-        return self._board
+    def turn_count(self):
+        return self.ply_count // 2
 
-    @board.setter
-    def board(self, new_board):
-        """ This method sets the board to the given new_board, after first checking that the new_board is a list of 32
-            elements consisting of (-2, -1, 0, 1, 2). It also checks that no team 2 man is at the top of the board 
-            and no team 1 man is at the bottom of the board (should be a king). If the new board is not valid, it
-            raise the appropriate error.
+    def viz_board(self):
+        """ This method returns a string visualizing the current
+        gamestate as a checkers board.
         """
+        board_str = ''
+        for row in range(8):
+            for column in range(4):
+                if row % 2 == 0:
+                    board_str += '| |'
+                    board_str += self.piece_reps[self.board[4*row + column]]
+                else:
+                    board_str += '|'
+                    board_str += self.piece_reps[self.board[4*row + column]]
+                    board_str += '| '
+            board_str += '|\n'
 
-        if type(new_board) is not list:
-            raise TypeError('Expected new_board input as a list of length 32')
-        elif len(new_board) != 32:
-            raise TypeError('Expected new_board input as a list of length 32')
+        if self.cont is not None:
+            board_str += 'Jump again!'
+        elif self.turn == 1:
+            board_str += 'Team 1 turn.'
         else:
-            for position in range(32):
-                if new_board[position] not in (-2, -1, 0, 1, 2):
-                    raise ValueError('Valid pieces are -2, -1, 0, 1, 2')
-            for end_position in range(4):
-                if new_board[end_position] == -1 or new_board[31 - end_position] == 1:
-                    raise ValueError('Pieces that are not kings cannot be in their end row')
-        self._board = new_board
+            board_str += 'Team 2 turn.'
+        return board_str
 
-    @property
-    def turn(self):
-        return self._turn
-
-    @turn.setter
-    def turn(self, new_turn):
-        if type(new_turn) is not int:
-            raise TypeError('Expected new_turn input as an integer')
-        elif new_turn not in (-1, 1):
-            raise ValueError('Valid new_turn inputs are -1 and 1')
-        self._turn = new_turn
-
-    @property
-    def continuation(self):
-        return self._continuation
-    
-    @continuation.setter
-    def continuation(self, new_continuation):
-        if type(new_continuation) is not int:
-            raise TypeError('Expected new_continuation input as an integer')
-        elif new_continuation not in range(-1, 32):
-            raise ValueError('Valid new_continuation inputs are integers -1 to 31')
-        self._continuation = new_continuation
-    
-    def piece_can_jump(self, position, move_direction):
-        """ This method returns True if there is a piece in the given position that can jump in the given direction
-        and False otherwise. The essential conditions to be checked is that the position to be jumped over and the 
-        position to be jumped to must both be valid positions, there must be a piece of the opposing team to be 
-        jumped over and a free space to land on.
+    def is_jump(self, pos, dir):
+        """ This method returns True if there is a piece in the given
+        position that can jump in the given direction and False
+        otherwise.
         """
+        if type(pos) is not int:
+            raise TypeError('Expects pos input as an integer')
+        elif type(dir) is not int:
+            raise TypeError('Expects dir input as an integer')
+        elif pos not in range(32):
+            raise ValueError('Valid pos inputs are integers 0 to 31')
+        elif dir not in range(4):
+            raise ValueError('Valid dir inputs are 0, 1, 2, 3')
 
-        # check for invalid inputs
-        if type(position) is not int:
-            raise TypeError('Expects position input as an integer')
-        elif type(move_direction) is not int:
-            raise TypeError('Expects move_direction input as an integer')
-        elif position not in range(32):
-            raise ValueError('Valid position inputs are integers 0 to 31')
-        elif move_direction not in range(4):
-            raise ValueError('Valid move_direction inputs are 0, 1, 2, 3')
-
-        # Calculate the positions in each direction; jump has one step in the direction, while target has two.
-        # If either is an invalid square, return False
-        jump = target_position(position, move_direction)
-        if jump == -1:
+        # Index jump has one step in the  given direction, while target
+        # has two. If either is an invalid square, return False
+        jump = target_pos(pos, dir)
+        if jump is None:
             return False
         else:
-            target = target_position(jump, move_direction)
-            if target == -1:
+            target = target_pos(jump, dir)
+            if target is None:
                 return False
 
-        if self.board[position] == 1:
-            # Team 1 man can jump southwest or southeast
-            if move_direction in (2, 3):
-                if self.board[jump] in (-1, -2) and self.board[target] == 0:
-                    return True
-            return False
-        elif self.board[position] == 2:
-            # Team 1 king can jump any direction
-            if move_direction in (0, 1, 2, 3):
-                if self.board[jump] in (-1, -2) and self.board[target] == 0:
-                    return True
-            return False
-        elif self.board[position] == -1:
-            # Team 2 man can jump northwest or northeast
-            if move_direction in (0, 1):
-                if self.board[jump] in (1, 2) and self.board[target] == 0:
-                    return True
-            return False
-        elif self.board[position] == -2:
-            # Team 2 king can jump any direction
-            if move_direction in (0, 1, 2, 3):
-                if self.board[jump] in (1, 2) and self.board[target] == 0:
-                    return True
-            return False
-        else:
-            return False
-    
-    def is_valid(self, position, move_direction):
-        """ This method takes in an integer 0 - 31 position and an integer 0 - 3 move_direction.
-        The move_direction corresponds to the following directions, when the board is illustrated as shown above:
-        0 - northeast
-        1 - northwest
-        2 - southwest
-        3 - southeast.
-        Depending on if the move is valid for this particular gamestate, the method returns true or false.
-        """
-
-        # check for invalid inputs
-        if type(position) is not int:
-            raise TypeError('Expects position input as an integer')
-        elif type(move_direction) is not int:
-            raise TypeError('Expects move_direction input as an integer')
-        elif position not in range(32):
-            raise ValueError('Valid position inputs are integers 0 to 31')
-        elif move_direction not in range(4):
-            raise ValueError('Valid move_direction inputs are 0, 1, 2, 3')
-
-        move_piece = self.board[position]
-
-        # Check if there is a piece of the right team on the given position
-        if self.turn == 1 and move_piece not in (1, 2):
-            return False
-        elif self.turn == -1 and move_piece not in (-1, -2):
-            return False
-
-        # Check for continuation
-        if not (self.continuation == -1 or self.continuation == position):
-            return False  
-        
-        """If the piece can jump and there is no continuation, the logic in the piece_can_jump module
-        ensures that the move is valid. Else, we need to make sure that there are no other pieces that can jump;
-        such a circumstance would require one of the other pieces to be moved.
-        """
-        if self.piece_can_jump(position, move_direction):
+        piece = self.board[pos]
+        if (dir in self.piece_dirs[piece]
+                and self.board[jump] in self.opp_pieces[piece]
+                and self.board[target] == 0):
             return True
         else:
-            for test_position in range(32):
-                for test_direction in range(4):
-                    if self.turn == 1 and self.board[test_position] in (1, 2) and self.piece_can_jump(test_position, test_direction):
-                        return False
-                    elif self.turn == -1 and self.board[test_position] in (-1, -2) and self.piece_can_jump(test_position, test_direction):
-                        return False
+            return False
 
-        # There are no pieces that can jump. All that remains to check is if the piece can move normally in the given direction.
-        target = target_position(position, move_direction)
-        if target >= 0 and self.board[target] == 0:
-            # There is a valid square to move to on the board and it is empty
-            if move_piece == 1 and move_direction in (2, 3):
-                # Team 1 man
+    def can_jump(self, pos):
+        """ This method takes in an integer 0 - 31 pos and tests
+        if the piece in the given position can jump in any direction.
+        It returns True or False based on the outcome. If there is no
+        piece, returns False.
+        """
+        if type(pos) is not int:
+            raise TypeError('Expects pos input as an integer')
+        elif pos not in range(32):
+            raise ValueError('Valid pos inputs are integers 0 to 31')
+
+        piece = self.board[pos]
+        for dir in self.piece_dirs[piece]:
+            jump = target_pos(pos, dir)
+            if jump is None:
+                continue
+            else:
+                target = target_pos(jump, dir)
+                if target is None:
+                    continue
+            if (self.board[jump] in self.opp_pieces[piece]
+                    and self.board[target] == 0):
                 return True
-            elif move_piece == -1 and move_direction in (0, 1):
-                # Team 2 man
-                return True
-            elif move_piece in (-2, 2):
-                # Team 1 or 2 King
-                return True            
-        else:  
-            return False   
+        return False
+
+    def is_valid(self, pos, dir):
+        """ This method takes in an integer 0 - 31 pos and an integer
+        0 - 3 dir. It returns True if there is a piece of the correct
+        team in the given position that can move and False otherwise.
+        """
+        if type(pos) is not int:
+            raise TypeError('Expects pos input as an integer')
+        elif type(dir) is not int:
+            raise TypeError('Expects dir input as an integer')
+        elif pos not in range(32):
+            raise ValueError('Valid pos inputs are integers 0 to 31')
+        elif dir not in range(4):
+            raise ValueError('Valid dir inputs are 0, 1, 2, 3')
+
+        piece = self.board[pos]
+        if piece not in self.team_pieces[self.turn]:
+            return False
+
+        if not (self.cont is None or self.cont == pos):
+            return False
+
+        # If the piece can jump and there is no continuation, the logic
+        # in the is_jump module ensures that the move is valid.
+        if self.is_jump(pos, dir):
+            return True
+        else:
+            # Check if other pieces can jump
+            for test_pos in range(32):
+                if (self.board[test_pos] in self.team_pieces[self.turn]
+                        and self.can_jump(test_pos)):
+                    return False
+
+        # There are no pieces that can jump.
+        target = target_pos(pos, dir)
+        if target is not None:
+            if self.board[target] == 0:
+                # There is a valid, empty square to move to.
+                if dir in self.piece_dirs[piece]:
+                    return True
+
+        return False
 
     def get_valid_moves(self):
-        """ This method assesses the gamestate and returns a list of all valid moves. Individual moves are themselves a list,
-        with the first entry the position (integer 0 - 31) and the second entry the direction (integer 0 - 3).
-        If there are no valid moves, the method returns an empty list.
-        """     
-
-        valid_move_list = []
-
+        """ This method assesses the gamestate and returns a list of all
+        valid moves. If there are no valid moves, the method returns an
+        empty list.
+        """
+        valid_moves = []
         # Iterate through all possible moves
-        for position in range(32):
-            for move_direction in range(4):
-                if self.is_valid(position, move_direction):
-                    valid_move_list.append([position, move_direction])
+        for pos in range(32):
+            for dir in range(4):
+                if self.is_valid(pos, dir):
+                    valid_moves.append((pos, dir))
+        return valid_moves
 
-        return valid_move_list
-        
-        
-class CheckersMatch():
-    """ The CheckersMatch object represents a single match of checkers. It notes the current state of the game as a Gamestate object, and has 
-    methods to update it as moves are fed in. It also tracks turns and moves for the purpose of determining if the game is 
-    won, lost, or drawn.
-
-    The moves lists are encoded as a nested list, so that the length of the move lists correspond to the turn count. The format is:
-    [position 1, move_direction 1, position 2, move_direction 2, position 3, move_direction 3, ...]
-    where moves 2, 3, etc. are a series of jumps in the same turn, should they exist.
-    """
-
-    def __init__(self, team_1_player, team_2_player):
-        self._current_gamestate = Gamestate()
-        self._team_1_moves = []
-        self._team_2_moves = []
-        self._turns_since_capture = 0
-        self.team_1_player = team_1_player
-        self.team_2_player = team_2_player
-
-    @property
-    def current_gamestate(self):
-        return self._current_gamestate
-    
-    @current_gamestate.setter
-    def current_gamestate(self, new_gamestate):
-        if type(new_gamestate) is not Gamestate:
-            raise TypeError('Expected new_gamestate input as a Gamestate object')
-        self._current_gamestate = new_gamestate
-    
-    @property
-    def team_1_moves(self):
-        return self._team_1_moves
-    
-    @team_1_moves.setter
-    def team_1_moves(self, new_moves):
-        """ This method checks that the given new_moves input is of the encoding outlined in the docstring of the 
-        CheckersMatch class.
-        """
-
-        if type(new_moves) is not list:
-            raise TypeError('Expected new_moves input as a list')
-        for move in new_moves:
-            if type(move) is not list:
-                raise TypeError('Expected new_moves input as a nested list')
-            if len(move) % 2 != 0 or len(move) == 0:
-                raise TypeError('Individual moves should have even length and be nonempty')
-            for i in range(len(move)):
-                if i % 2 == 0 and move[i] not in range(32):
-                    raise ValueError("Even entries are integers in range 0 to 31")
-                elif i % 2 == 1 and move[i] not in range(4):
-                    raise ValueError("Odd entries are integers in range 0 to 3")
-        self._team_1_moves = new_moves
-
-    @property
-    def team_2_moves(self):
-        return self._team_2_moves
-    
-    @team_2_moves.setter
-    def team_2_moves(self, new_moves):
-        """ This method checks that the given new_moves input is of the encoding outlined in the docstring of the 
-        CheckersMatch class.
-        """
-
-        if type(new_moves) is not list:
-            raise TypeError('Expected new_moves input as a list')
-        for move in new_moves:
-            if type(move) is not list:
-                raise TypeError('Expected new_moves input as a nested list')
-            if len(move) % 2 != 0 or len(move) == 0:
-                raise TypeError('Individual moves should have even length and be nonempty')
-            for i in range(len(move)):
-                if i % 2 == 0 and move[i] not in range(32):
-                    raise ValueError("Even entries are integers in range 0 to 31")
-                elif i % 2 == 1 and move[i] not in range(4):
-                    raise ValueError("Odd entries are integers in range 0 to 3")
-        self._team_2_moves = new_moves
-
-    @property
-    def turns_since_capture(self):
-        return self._turns_since_capture
-    
-    @turns_since_capture.setter
-    def turns_since_capture(self, new_count):
-        if type(new_count) is not int:
-            raise TypeError('Expected new_count input as an integer')
-        self._turns_since_capture = new_count
-
-    def get_turn_count(self, team):
-        """Returns the number of turns taken by the designated team, as the length of the respective moves list
-        if the input is not 1 or -1, raises the appropriate error.
-        """
-
-        if type(team) is not int:
-            raise TypeError('Expected team input as an integer')
-
-        if team == 1:
-            return len(self._team_1_moves)
-        elif team == -1:
-            return len(self._team_2_moves)
-        else:
-            raise ValueError('Valid team inputs are 1 and -1')
-    
-    def update_gamestate(self, position, move_direction):
-        """ This method takes in an integer position in 0 - 31 corresponding to a square on the board and an integer move_direction 
-        corresponding to the following directions:
-        0 - northeast
-        1 - northwest
-        2 - southwest
-        3 - southeast.
-        The method uses the Gamestate object to check that the move is valid. If it is, it updates the board. If the turn changes (i.e.
-        there is not another jump to be made) then it updates the turn. If there is another jump to be made, it updates the continuation.
-        This method then updates team_1_moves and team_2_moves. Finally, it returns the following codes
-        based on the outcome of this action:
+    def update(self, pos, dir):
+        """ This method takes in an integer 0 - 31 pos and an integer
+        0 - 3 dir. The method uses the is_valid method to check that the
+        move is valid. If it is, it updates the board. If the turn
+        changes (i.e. no continuation) then it updates the
+        ply counts. If there is another jump to be made, it updates the
+        cont. Finally, it returns the following codes:
         0 - invalid move
-        1 - valid move, board updated, turn passes to next team
-        2 - valid move, board updated, turn does not pass (continuation)
-        If there is no capture, the turns_since_capture property is increased by 1. If there is a capture, it is set to 0.
+        1 - valid move, turn passes to next team
+        2 - valid move, turn does not pass (continuation)
         """
-
-        # Check if move is valid
         try:
-            if not self.current_gamestate.is_valid(position, move_direction):
+            if not self.is_valid(pos, dir):
                 return 0
         except (TypeError, ValueError):
             return 0
-        
-        # Update turn lists. If there is continuation, we add onto the move instead of creating a new one
-        if self.current_gamestate.continuation == -1:
-            if self.current_gamestate.turn == 1:
-                self.team_1_moves.append([position, move_direction])
-            else:
-                self.team_2_moves.append([position, move_direction])
-        else:
-            if self.current_gamestate._turn == 1:
-                self.team_1_moves[-1].append(position)
-                self.team_1_moves[-1].append(move_direction)
-            else:
-                self.team_2_moves[-1].append(position)
-                self.team_2_moves[-1].append(move_direction)
 
-        # Check if update is a jump or not
-        if not self.current_gamestate.piece_can_jump(position, move_direction):
-            # Piece cannot jump - a simple move
-            target = target_position(position, move_direction)
-            if self.current_gamestate.board[position] == self.current_gamestate.turn and (target // 4) in (0, 7):
+        if not self.is_jump(pos, dir):
+            target = target_pos(pos, dir)
+            if self.board[pos] == self.turn and (target // 4) in (0, 7):
                 # Piece becomes king
-                self.current_gamestate.board[target] = self.current_gamestate.board[position] * 2
+                self.board[target] = self.board[pos] * 2
             else:
                 # Piece does not become king
-                self.current_gamestate.board[target] = self.current_gamestate.board[position]
-            self.current_gamestate.board[position] = 0
-            # Update turn
-            self.current_gamestate.turn *= -1
-            self.turns_since_capture += 1
+                self.board[target] = self.board[pos]
+            self.board[pos] = 0
+            self.turn *= -1
+            self.ply_count += 1
+            self.plys_since_capture += 1
             return 1
         else:
-            # Piece can jump
-            jump = target_position(position, move_direction)
-            target = target_position(jump, move_direction)
-            # Remove jumped piece
-            self.current_gamestate._board[jump] = 0
-            if self.current_gamestate.board[position] == self.current_gamestate.turn and (target // 4) in (0, 7):
+            jump = target_pos(pos, dir)
+            target = target_pos(jump, dir)
+            self.board[jump] = 0
+            if self.board[pos] == self.turn and (target // 4) in (0, 7):
                 # Piece becomes king - note turn always then passes
-                self.current_gamestate.board[target] = self.current_gamestate.board[position] * 2
-                self.current_gamestate.board[position] = 0
-                self.current_gamestate.continuation = -1
-                self.current_gamestate.turn *= -1
-                self.turns_since_capture = 0
+                self.board[target] = self.board[pos] * 2
+                self.board[pos] = 0
+                self.cont = None
+                self.turn *= -1
+                self.ply_count += 1
+                self.plys_since_capture = 0
                 return 1
             else:
                 # Piece does not become king
-                self.current_gamestate.board[target] = self.current_gamestate.board[position]
-                self.current_gamestate.board[position] = 0
-                # Check if the piece can continue jumping (continuation)
-                piece = self.current_gamestate.board[target]
-                direction_list = []
-                for i in range(4):
-                    direction_list.append(self.current_gamestate.piece_can_jump(target, i))
-                if (piece == 1 and (direction_list[2] or direction_list[3])) or (piece == -1 and (direction_list[0] or direction_list[1]))\
-                or (piece in (-2, 2) and (direction_list[0] or direction_list[1] or direction_list[2] or direction_list[3])):
-                    # Piece can continue to jump
-                    self.current_gamestate.continuation = target
+                self.board[target] = self.board[pos]
+                self.board[pos] = 0
+                # Check for continuation
+                piece = self.board[target]
+                if self.can_jump(target):
+                    self.cont = target
                     return 2
                 else:
-                    # Piece cannot continue to jump
-                    self.current_gamestate.continuation = -1
-                    self.current_gamestate.turn *= -1
-                    self.turns_since_capture = 0
+                    self.cont = None
+                    self.turn *= -1
+                    self.ply_count += 1
+                    self.plys_since_capture = 0
                     return 1
-        
+
     def is_game_over(self):
-        """ This method checks the current_gamestate Gamestate object and associated properties in the CheckersMatch object to determine
-        if the game has been won, lost, or drawn. The conditions for winning are either taking all of the opponents pieces or putting
-        the opponent in a position where they cannot move. The conditions for a draw are 40 moves without a capture.
-        Based on the results, this method returns the following encodings:
+        """ This method checks the Gamestate object determines if the
+        game has been won, lost, or drawn. Returns:
         -1 - Team 2 wins
         0 - Draw
         1 - Team 1 wins
         2 - Neither team wins, game continues.
-        Note that this method is run directly following the update_gamestate method.
         """
+        if not self.get_valid_moves():
+            return -1 * self.turn
 
-        # Check to see if current player has no valid moves.
-        if len(self.current_gamestate.get_valid_moves()) == 0:
-            return -1 * self.current_gamestate.turn
-        
-        # If the current player has legal moves, the only way the game has ended is a draw.
-        if self.turns_since_capture >= 80:
+        if self.plys_since_capture >= 80:
             # 40 "full" turns since the last capture
             return 0
-        
-        # Current plays has valid moves and the game has not drawn. Thus the game continues.
+
         return 2
-    
-    def play_loop(self):
+
+    def copy(self):
+        """ This method returns a deep copy of the gamestate."""
+        copy_gamestate = Gamestate()
+        copy_gamestate.board = self.board[:]
+        copy_gamestate.turn = self.turn
+        copy_gamestate.cont = self.cont
+        return copy_gamestate
+
+    def get_full_moves(self):
+        """ This method returns a list of all valid moves including
+        multiple jumps which are collected in a single tuple.
+        """
+        full_moves = []
+        valid_moves = self.get_valid_moves()
+        for move in valid_moves:
+            test_gamestate = self.copy()
+            if test_gamestate.update(*move) == 2:
+                for cont_move in test_gamestate.get_full_moves():
+                    full_moves.append(move + cont_move)
+            else:
+                full_moves.append(move)
+
+        return full_moves
+
+
+class CheckersMatch():
+    """ The CheckersMatch object represents a single match of checkers.
+    It contains the current state of the game as a Gamestate object, and
+    has methods to control the gameplay loop. The attributes are:
+    - gamestate: A Gamestate object that tracks and updates the
+    current state of the current checkers game.
+    - player_1: An instance of the Player class or subclass
+    thereof from the players module. Controls team 1.
+    - player_2: Same as player_1, but controls team 2.
+    - last_move: Holds the most recent move to be fed to the next
+    player. Used for the tree search player.
+    - move_memory: Used to hold the last move for the purpose of
+    continuation moves, so that the entire full move can be assigned
+    to last_move.
+    """
+
+    def __init__(self, player_1, player_2, game_count, best_of):
+        self.player_1 = player_1
+        self.player_2 = player_2
+        self.game_count = game_count
+        self.played_count = 0
+        self.wins_1 = 0
+        self.wins_2 = 0
+        self.draws = 0
+        self.score_1 = 0
+        self.score_2 = 0
+        self.best_of = best_of
+        self.last_move = None
+        self.move_memory = ()
+
+    def game_loop(self):
+        """This method controls the game each ply. It loops until the
+        game is over, then returns the result.
+        """
         while True:
-            result = self.is_game_over()
+            result = self.gamestate.is_game_over()
             if result != 2:
                 return result
-        
-            if self.current_gamestate.turn == 1:
-                current_player = self.team_1_player
+
+            if self.gamestate.turn == 1:
+                current_player = self.player_1
             else:
-                current_player = self.team_2_player
-            
-            next_move = current_player.get_next_turn(visualize_board(self.current_gamestate.board))
-            move_result = self.update_gamestate(next_move[0], next_move[1])
-            if move_result == 0:
-                print('Invalid move, please try again.')
-    
-    def start(self):
-        self.team_1_player.gamestate = self.current_gamestate
-        self.team_2_player.gamestate = self.current_gamestate
-        return self.play_loop()
-        
+                current_player = self.player_2
 
-        
-            
+            next_move = current_player.get_next_turn(self.last_move)
+            move_result = self.gamestate.update(*next_move)
 
+            match move_result:
+                # FIXME: This module should not be printing
+                case 0:
+                    print('Invalid move')
+                case 1:
+                    self.last_move = self.move_memory + next_move
+                    self.move_memory = ()
+                case 2:
+                    self.move_memory += next_move
 
+    def is_match_over(self):
+        """ This method checks if the match loop should terminate as
+        the match is over.
+        """
+        if self.best_of:
+            if max(self.score_1, self.score_2) >= self.game_count / 2:
+                return True
+        else:
+            if self.played_count == self.game_count:
+                return True
+        return False
+
+    def match_loop(self):
+        """ This method handles the match loop. Each iteration of the
+        loop is a single game in the match. When the match is over, it
+        returns the scores and wins/draws count as a tuple.
+        """
+        while not self.is_match_over():
+            self.gamestate = Gamestate()
+            self.player_1.gamestate = self.gamestate
+            self.player_2.gamestate = self.gamestate
+
+            game_result = self.game_loop()
+            match game_result:
+                case 1:
+                    self.wins_1 += 1
+                    self.score_1 += 1
+                case -1:
+                    self.wins_2 += 1
+                    self.score_2 += 1
+                case 0:
+                    self.draws += 1
+                    self.score_1 += 0.5
+                    self.score_2 += 0.5
+            self.played_count += 1
+
+        return (
+            self.score_1,
+            self.score_2,
+            self.wins_1,
+            self.wins_2,
+            self.draws
+            )
