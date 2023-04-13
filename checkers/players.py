@@ -27,16 +27,26 @@ class Player():
         while True:
             try:
                 pos = int(input('Position: '))
-                break
             except ValueError:
                 print('Enter a position integer between 0 and 31.')
+                continue
+            if pos not in range(32):
+                print('Enter a position integer between 0 and 31')
+                continue
+            else:
+                break
 
         while True:
             try:
                 dir = int(input('Direction: '))
-                break
             except ValueError:
                 print('Enter a direction integer between 0 and 3.')
+                continue
+            if dir not in range(4):
+                print('Enter a direction integer between 0 and 3')
+                continue
+            else:
+                break
 
         return (pos, dir)
 
@@ -247,19 +257,19 @@ class TreePlayer(Player):
 class EasyPlayer(TreePlayer):
     name = "Easy Difficulty"
     plys_ini = 2
-    plys_mid = 3
-    plys_late = 5
+    plys_mid = 2
+    plys_late = 3
 
 
 class MediumPlayer(TreePlayer):
     name = "Medium Difficulty"
     plys_ini = 3
-    plys_mid = 5
-    plys_late = 8
+    plys_mid = 4
+    plys_late = 5
 
 
 class HardPlayer(TreePlayer):
     name = "Hard Difficulty"
     plys_ini = 4
-    plys_mid = 6
-    plys_late = 10
+    plys_mid = 5
+    plys_late = 6

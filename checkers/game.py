@@ -326,20 +326,13 @@ class Gamestate():
 
     def update(self, pos, dir):
         """ This method takes in an integer 0 - 31 pos and an integer
-        0 - 3 dir. The method uses the is_valid method to check that the
-        move is valid. If it is, it updates the board. If the turn
+        0 - 3 dir. The method updates the board. If the turn
         changes (i.e. no continuation) then it updates the
         ply counts. If there is another jump to be made, it updates the
         cont. Finally, it returns the following codes:
-        0 - invalid move
-        1 - valid move, turn passes to next team
-        2 - valid move, turn does not pass (continuation)
+        1 - turn passes to next team
+        2 - turn does not pass (continuation)
         """
-        try:
-            if not self.is_valid(pos, dir):
-                return 0
-        except (TypeError, ValueError):
-            return 0
 
         if not self.is_jump(pos, dir):
             target = target_pos(pos, dir)
@@ -470,12 +463,13 @@ class CheckersMatch():
                 current_player = self.player_2
 
             next_move = current_player.get_next_turn(self.last_move)
+            if not self.gamestate.is_valid(*next_move):
+                # FIXME: This module should not be printing
+                print('Invalid Move')
+                continue
             move_result = self.gamestate.update(*next_move)
 
             match move_result:
-                # FIXME: This module should not be printing
-                case 0:
-                    print('Invalid move')
                 case 1:
                     self.last_move = self.move_memory + next_move
                     self.move_memory = ()

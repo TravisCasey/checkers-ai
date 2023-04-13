@@ -72,6 +72,7 @@ def command_line_interface(player_classes, match_class):
                                  player_2,
                                  game_count_input,
                                  best_of)
+
     match_result = checkers_match.match_loop()
     print('Team 1: {}\nTeam 2: {}'.format(player_1.name, player_2.name))
     print('Team 1 score: {}\nTeam 2 score: {}\nTeam 1 wins: {}\n\
