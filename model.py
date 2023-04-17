@@ -15,13 +15,13 @@ import checkers
 
 PATH = 'model_params.pt'
 BATCH_SIZE = 128
-GAMMA = 0.95
+GAMMA = 0.8
 EXP_START = 0.9
 EXP_END = 0.05
-EXP_DECAY = 25000
-GENERATIONS = 500
-GAMES_PER_GENERATION = 200
-LR = 0.0005
+EXP_DECAY = 2000000
+GENERATIONS = 1000
+GAMES_PER_GENERATION = 80
+LR = 0.0004
 WIN_REWARD = 1
 WIN_STEP = (1 - GAMMA) * WIN_REWARD
 DRAW_REWARD = 0
@@ -61,41 +61,32 @@ class DQN(nn.Module):
     """ The neural network used for our reinforcement learning."""
     def __init__(self):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(32, 48)
-        self.layer2 = nn.Linear(48, 64)
-        self.layer3 = nn.Linear(64, 96)
-        self.layer4 = nn.Linear(96, 128)
+        self.layer1 = nn.Linear(32, 128)
+        self.layer2 = nn.Linear(128, 256)
+        self.layer3 = nn.Linear(256, 256)
+        self.layer4 = nn.Linear(256, 128)
+        self.layer5 = nn.Linear(128, 128)
 
     def forward(self, x):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
         x = F.relu(self.layer3(x))
+        x = F.relu(self.layer4(x))
         # Results in [-1, 1]
-        return (F.tanh(self.layer4(x)))
+        return (F.tanh(self.layer5(x)))
 
 
-class TrainPlayer(checkers.players.Player):
+class ModelPlayer(checkers.players.Player):
     """ This subclass uses the provided neural network to decide on the
-    next move to be played. It has a chance to choose a random move for
-    exploration with an exponentially decaying distribution. It stores
-    gamestates and masks used in memory until the end of the game when the
-    reward can be assigned.
+    next move to be played.
     """
-    name = 'Training Player'
+    name = 'AI Player'
 
-    def __init__(self):
+    def __init__(self, verbose):
         self.gamestate = None
-        self.iters = 0
-        self.temp_memory = [[], []]  # FIXME Tensor?
-
-        # Attempt to initialize model parameters from PATH
+        self.verbose = verbose
         self.model = DQN().to(device)
-        try:
-            self.model.load_state_dict(torch.load(PATH))
-            print('Model loaded successfully.')
-        except FileNotFoundError:
-            print('No model found, using default values.')
-
+    
     def to_tuple(self, index):
         """ This method takes in a 2d tensor containing the index of a
         move and converts it into a tuple containing the move used by
@@ -104,14 +95,6 @@ class TrainPlayer(checkers.players.Player):
         pos = int(index.item() // 4)
         dir = int(index.item() % 4)
         return (pos, dir)
-
-    def to_tensor(self, move):
-        """ This method takes in a tuple containing a move and converts
-        it into a 2d tensor containing the index of the move.
-        """
-        return torch.tensor([[move[0]*4 + move[1]]],
-                            dtype=torch.int64,
-                            device=device)
 
     def orient_board(self):
         """ The model always takes in a board from team 1 perspective.
@@ -127,26 +110,92 @@ class TrainPlayer(checkers.players.Player):
         else:
             board_tensor.mul_(-1)
             return board_tensor.flip(1)
-
+    
+    def orient_move(self, move):
+        dir_translator = {0: 2,
+                           1: 3,
+                           2: 0,
+                           3: 1}
+        if self.gamestate.turn == 1:
+            return move
+        else:
+            return (31 - move[0], dir_translator[move[1]])
+    
     def get_mask(self):
         """ This method returns a 2d array of values corresponding to
         valid moves. Invalid moves have -2, valid has 0. Can be added to
-        neura net output to mask out invalid moves.
+        neural net output to mask out invalid moves.
         """
         valid_moves = self.gamestate.get_valid_moves()
         valid_ind = []
         for move in valid_moves:
-            valid_ind.append(move[0]*4 + move[1])
+            if self.gamestate.turn == 1:
+                valid_ind.append(move[0]*4 + move[1])
+            else:
+                oriented_move = self.orient_move(move)
+                valid_ind.append(oriented_move[0]*4 + oriented_move[1])
         mask = tuple(map(lambda s: s not in valid_ind, range(128)))
         return torch.tensor([mask], dtype=torch.int64, device=device) * -2
+    
+    def get_next_turn(self):
+        if self.gamestate.invalid_flag:
+            print('Invalid last move.')
+        elif self.verbose:
+            print(self.gamestate.viz_board())
+            print('Last move: %s' % (self.gamestate.prev_move,))
 
-    def get_next_turn(self, opp_move):
+        mask = self.get_mask()
+        with torch.no_grad():
+            move_weights = self.model(self.orient_board())
+            move_ind = (move_weights + mask).max(1, keepdim=True)[1]
+            chosen_move = self.orient_move(self.to_tuple(move_ind))
+        return chosen_move
+
+
+class TrainPlayer(ModelPlayer):
+    """ This subclass uses the provided neural network to decide on the
+    next move to be played. It has a chance to choose a random move for
+    exploration with an exponentially decaying distribution. It stores
+    gamestates and masks used in memory until the end of the game when
+    the reward can be assigned.
+    """
+    name = 'Training Player'
+
+    def __init__(self, verbose):
+        self.gamestate = None
+        self.verbose = verbose
+        self.iters = 0
+        self.temp_memory = [[], []]  # FIXME Tensor?
+
+        # Attempt to initialize model parameters from PATH
+        self.model = DQN().to(device)
+        try:
+            self.model.load_state_dict(torch.load(PATH))
+            print('Model loaded successfully.')
+        except FileNotFoundError:
+            print('No model found, using default values.')
+
+    def to_tensor(self, move):
+        """ This method takes in a tuple containing a move and converts
+        it into a 2d tensor containing the index of the move.
+        """
+        return torch.tensor([[move[0]*4 + move[1]]],
+                            dtype=torch.int64,
+                            device=device)
+
+    def get_next_turn(self):
         """ This method returns the next move in tuple format. It
         randomly decides to choose either a move from the neural net
         or to decide randomly with an exponentially decaying
         distribution. It then saves state information to construct
         replay memory after the game.
         """
+        if self.gamestate.invalid_flag:
+            print('Invalid last move.')
+        elif self.verbose:
+            print(self.gamestate.viz_board())
+            print('Last move: %s' % (self.gamestate.prev_move,))
+
         mask = self.get_mask()
         # Compute current threshold of exponential distribution
         exp_current = EXP_END + (EXP_START - EXP_END)\
@@ -157,7 +206,7 @@ class TrainPlayer(checkers.players.Player):
             with torch.no_grad():
                 move_weights = self.model(self.orient_board())
                 move_ind = (move_weights + mask).max(1, keepdim=True)[1]
-                chosen_move = self.to_tuple(move_ind)
+                chosen_move = self.orient_move(self.to_tuple(move_ind))
         else:
             move_list = self.gamestate.get_valid_moves()
             chosen_move = move_list[random.randrange(len(move_list))]
@@ -169,10 +218,11 @@ class TrainPlayer(checkers.players.Player):
         return chosen_move
 
 
-model_player = TrainPlayer()
+model_player = TrainPlayer(False)
+validate_player = ModelPlayer(False)
 target_model = DQN().to(device)
 optimizer = optim.AdamW(model_player.model.parameters(), lr=LR, amsgrad=True)
-memory = ReplayMemory(10000)
+memory = ReplayMemory(25000)
 
 
 def optimize_model():
@@ -203,7 +253,6 @@ def optimize_model():
 
     criterion = nn.SmoothL1Loss()
     loss = criterion(q_values, expected_q_values.unsqueeze(1))
-    print(loss.item())
 
     optimizer.zero_grad()
     loss.backward()
@@ -214,28 +263,93 @@ def optimize_model():
     return loss.item()
 
 
-def plot_loss(loss):
-    SMOOTHING = 100
+def plot_loss(prev_points, new_points, final=False):
+    ALPHA = 0.002
     plt.clf()
-    plt.title('Training')
     plt.xlabel('Episodes')
-    plt.ylabel('Smoothed Loss')
-    # plt.plot(loss)
+    plt.ylabel('Loss')
+    if not final:
+        plt.title('Training')
+        for point in new_points:
+            if not prev_points:
+                prev_points.append(point)
+            else:
+                prev_points.append(ALPHA * point + (1 - ALPHA) * prev_points[-1])
+        if len(prev_points) >= 10000:
+            plt.xlim(left=len(prev_points) - 10000, right=len(prev_points))
+        plt.plot(prev_points)
+        plt.pause(1)
+        return prev_points
+    else:
+        plt.title('Final Results')
+        plt.xlim(left=0, right=len(prev_points))
+        plt.plot(prev_points)
+        plt.show()
 
-    smoothed_loss = []
-    for i in range(len(loss)):
-        if i < SMOOTHING - 1:
-            smoothed_loss.append(sum(loss[:i+1]) / (i+1))
-        else:
-            smoothed_loss.append(sum(loss[i-SMOOTHING+1:i+1]) / SMOOTHING)
-    plt.plot(smoothed_loss)
-    plt.pause(0.001)
+
+def validate_model(game_count):
+    validate_player.model.load_state_dict(model_player.model.state_dict())
+    
+    random_player = checkers.players.RandomPlayer(False)
+    easy_player = checkers.players.EasyPlayer(False)
+    medium_player = checkers.players.MediumPlayer(False)
+
+    random_score = 0
+    checkers_match = checkers.game.CheckersMatch(validate_player,
+                                                 random_player,
+                                                 game_count,
+                                                 False)
+    result = checkers_match.match_loop()
+    random_score += result[0]
+    checkers_match = checkers.game.CheckersMatch(random_player,
+                                                 validate_player,
+                                                 game_count,
+                                                 False)
+    result = checkers_match.match_loop()
+    random_score += result[1]
+
+    easy_score = 0
+    checkers_match = checkers.game.CheckersMatch(validate_player,
+                                                 easy_player,
+                                                 game_count,
+                                                 False)
+    result = checkers_match.match_loop()
+    easy_score += result[0]
+    checkers_match = checkers.game.CheckersMatch(easy_player,
+                                                 validate_player,
+                                                 game_count,
+                                                 False)
+    result = checkers_match.match_loop()
+    easy_score += result[1]
+
+    medium_score = 0
+    checkers_match = checkers.game.CheckersMatch(validate_player,
+                                                 medium_player,
+                                                 game_count,
+                                                 False)
+    result = checkers_match.match_loop()
+    medium_score += result[0]
+    checkers_match = checkers.game.CheckersMatch(medium_player,
+                                                 validate_player,
+                                                 game_count,
+                                                 False)
+    result = checkers_match.match_loop()
+    medium_score += result[1]
+
+    print('Validation out of {} games:'. format(game_count * 2))
+    print('Random: {}, Easy: {}, Medium: {}\n'.format(random_score,
+                                                    easy_score,
+                                                    medium_score))
 
 
 # Training loop
-loss = []
+loss_list = []
 for generation in range(GENERATIONS):
-    print('Generation: ({}/{})'.format(generation, GENERATIONS))
+    new_loss_list = []
+    if generation % 25 == 0:
+        print('Generation: ({}/{})'.format(generation, GENERATIONS))
+        print('Validating...')
+        validate_model(5)
     # Sync model parameters
     target_model.load_state_dict(model_player.model.state_dict())
     for game in range(GAMES_PER_GENERATION):
@@ -298,6 +412,11 @@ for generation in range(GENERATIONS):
 
         new_loss = optimize_model()
         if new_loss is not None:
-            loss.append(new_loss)
-    plot_loss(loss)
-    # Plot progress, validate
+            new_loss_list.append(new_loss)
+    loss_list = plot_loss(loss_list, new_loss_list, False)
+
+torch.save(model_player.model.state_dict(), PATH)
+print('Running final validation...')
+validate_model(50)
+plt.ioff()
+plot_loss(loss_list, [], True)

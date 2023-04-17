@@ -1,13 +1,24 @@
-import game
-import players
+"""The command line interface build for playing checkers.
+
+This module can be run as a script to start a command line interface to
+play checkers. The command_line_interface function can be called with
+a customized tuple of player classes and a match class to run an
+interface on those parameters.
+
+Functions:
+    command_line_interface: Runs an interface to play checkers in the
+        terminal.
+"""
 
 
 def command_line_interface(player_classes, match_class):
-    """ This function begins a checkers match played or observed through
-    the command line. The player_classes input is a tuple of classes;
-    these are expected as subclasses of the Player class from the
-    players module. The match_class is the CheckersMatch class of which
-    to instantiate.
+    """Begins a checkers match played or observed through the terminal.
+     
+    Args:
+        player_classes: A tuple of classes; these are expected as
+            subclasses of the Player class from the players module.
+            These are the choices of player types in the match.
+        match_class: The CheckersMatch class of which to instantiate.
     """
 
     # Choose first player
@@ -21,10 +32,19 @@ def command_line_interface(player_classes, match_class):
             print('Please enter an integer from the list above.')
             continue
 
-        if class_1_input in range(len(player_classes)):
+        if class_1_input not in range(len(player_classes)):
+            print('Please enter an integer from the list above.')
+            continue
+
+        verbose_1_input = input('Show board? (Y/N): ')
+        if verbose_1_input in ('y', 'Y'):
+            verbose_1 = True
+            break
+        elif verbose_1_input in ('n', 'N'):
+            verbose_1 = False
             break
         else:
-            print('Please enter an integer from the list above.')
+            print('Please enter Y for yes or N for no.')
 
     # Choose second player
     while True:
@@ -37,10 +57,19 @@ def command_line_interface(player_classes, match_class):
             print('Please enter an integer from the list above.')
             continue
 
-        if class_2_input in range(len(player_classes)):
+        if class_2_input not in range(len(player_classes)):
+            print('Please enter an integer from the list above.')
+            continue
+        
+        verbose_2_input = input('Show board? (Y/N): ')
+        if verbose_2_input in ('y', 'Y'):
+            verbose_2 = True
+            break
+        elif verbose_2_input in ('n', 'N'):
+            verbose_2 = False
             break
         else:
-            print('Please enter an integer from the list above.')
+            print('Please enter Y for yes or N for no.')
 
     # Choose number of games to play
     while True:
@@ -66,8 +95,8 @@ def command_line_interface(player_classes, match_class):
         else:
             print('Please enter Y for yes or N for no.')
 
-    player_1 = player_classes[class_1_input](1)
-    player_2 = player_classes[class_2_input](-1)
+    player_1 = player_classes[class_1_input](verbose_1)
+    player_2 = player_classes[class_2_input](verbose_2)
     checkers_match = match_class(player_1,
                                  player_2,
                                  game_count_input,
@@ -80,6 +109,9 @@ Team 2 wins: {}\nDraws: {}'.format(*match_result))
 
 
 if __name__ == '__main__':
+    import game
+    import players
+
     command_line_interface((players.Player,
                             players.RandomPlayer,
                             players.EasyPlayer,

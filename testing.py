@@ -1,27 +1,28 @@
 import unittest
 import checkers
 import torch
+import matplotlib.pyplot as plt
 
 
 class TestGame(unittest.TestCase):
     def test_target_pos(self):
-        self.assertEqual(checkers.game.target_pos(0, 2), 4)
-        self.assertEqual(checkers.game.target_pos(17, 0), 14)
-        self.assertEqual(checkers.game.target_pos(9, 1), 5)
-        self.assertEqual(checkers.game.target_pos(4, 3), 8)
-        self.assertEqual(checkers.game.target_pos(6, 1), 1)
-        self.assertEqual(checkers.game.target_pos(22, 2), 25)
-        self.assertEqual(checkers.game.target_pos(31, 2), None)
-        self.assertEqual(checkers.game.target_pos(2, 1), None)
-        self.assertEqual(checkers.game.target_pos(11, 3), None)
-        self.assertEqual(checkers.game.target_pos(20, 2), None)
-        self.assertEqual(checkers.game.target_pos(12, 1), None)
+        self.assertEqual(checkers.game.target_pos((0, 2)), 4)
+        self.assertEqual(checkers.game.target_pos((17, 0)), 14)
+        self.assertEqual(checkers.game.target_pos((9, 1)), 5)
+        self.assertEqual(checkers.game.target_pos((4, 3)), 8)
+        self.assertEqual(checkers.game.target_pos((6, 1)), 1)
+        self.assertEqual(checkers.game.target_pos((22, 2)), 25)
+        self.assertEqual(checkers.game.target_pos((31, 2)), None)
+        self.assertEqual(checkers.game.target_pos((2, 1)), None)
+        self.assertEqual(checkers.game.target_pos((11, 3)), None)
+        self.assertEqual(checkers.game.target_pos((20, 2)), None)
+        self.assertEqual(checkers.game.target_pos((12, 1)), None)
         with self.assertRaises(TypeError):
-            checkers.game.target_pos('three', 2)
+            checkers.game.target_pos(('three', 2))
             checkers.game.target_pos(3, None)
         with self.assertRaises(ValueError):
-            checkers.game.target_pos(-2, 2)
-            checkers.game.target_pos(3, 14)
+            checkers.game.target_pos((-2, 2))
+            checkers.game.target_pos((3, 14))
 
     def test_piece_dicts(self):
         test_gamestate = checkers.game.Gamestate()
@@ -92,32 +93,32 @@ Team 2 turn.')
                             0,  0,  1,  0,      # | | | | |o| | | |
                             -1, -1, -2,  0,     # | |x| |x| |X| | |
                             0,  0,  0,  2]      # | | | | | | |O| |
-        self.assertEqual(test_state.is_jump(0, 0), False)
-        self.assertEqual(test_state.is_jump(0, 2), False)
-        self.assertEqual(test_state.is_jump(1, 1), False)
-        self.assertEqual(test_state.is_jump(1, 2), False)
-        self.assertEqual(test_state.is_jump(1, 3), False)
-        self.assertEqual(test_state.is_jump(5, 2), False)
-        self.assertEqual(test_state.is_jump(5, 3), True)
-        self.assertEqual(test_state.is_jump(7, 0), False)
-        self.assertEqual(test_state.is_jump(7, 2), True)
-        self.assertEqual(test_state.is_jump(9, 1), True)
-        self.assertEqual(test_state.is_jump(10, 1), False)
-        self.assertEqual(test_state.is_jump(17, 0), False)
-        self.assertEqual(test_state.is_jump(17, 1), False)
-        self.assertEqual(test_state.is_jump(22, 0), False)
-        self.assertEqual(test_state.is_jump(22, 1), False)
-        self.assertEqual(test_state.is_jump(22, 2), True)
-        self.assertEqual(test_state.is_jump(22, 3), False)
-        self.assertEqual(test_state.is_jump(26, 1), False)
-        self.assertEqual(test_state.is_jump(30, 1), False)
-        self.assertEqual(test_state.is_jump(31, 0), False)
+        self.assertEqual(test_state.is_jump((0, 0)), False)
+        self.assertEqual(test_state.is_jump((0, 2)), False)
+        self.assertEqual(test_state.is_jump((1, 1)), False)
+        self.assertEqual(test_state.is_jump((1, 2)), False)
+        self.assertEqual(test_state.is_jump((1, 3)), False)
+        self.assertEqual(test_state.is_jump((5, 2)), False)
+        self.assertEqual(test_state.is_jump((5, 3)), True)
+        self.assertEqual(test_state.is_jump((7, 0)), False)
+        self.assertEqual(test_state.is_jump((7, 2)), True)
+        self.assertEqual(test_state.is_jump((9, 1)), True)
+        self.assertEqual(test_state.is_jump((10, 1)), False)
+        self.assertEqual(test_state.is_jump((17, 0)), False)
+        self.assertEqual(test_state.is_jump((17, 1)), False)
+        self.assertEqual(test_state.is_jump((22, 0)), False)
+        self.assertEqual(test_state.is_jump((22, 1)), False)
+        self.assertEqual(test_state.is_jump((22, 2)), True)
+        self.assertEqual(test_state.is_jump((22, 3)), False)
+        self.assertEqual(test_state.is_jump((26, 1)), False)
+        self.assertEqual(test_state.is_jump((30, 1)), False)
+        self.assertEqual(test_state.is_jump((31, 0)), False)
         with self.assertRaises(TypeError):
-            test_state.is_jump([41], 2)
-            test_state.is_jump(5, None)
+            test_state.is_jump(([41], 2))
+            test_state.is_jump((5, None))
         with self.assertRaises(ValueError):
-            test_state.is_jump(33, 2)
-            test_state.is_jump(5, -2)
+            test_state.is_jump((33, 2))
+            test_state.is_jump((5, -2))
         test_state.board = [0,  0,  1,  1,       # | | | | | |o| |o|
                             0, -1,  0,  0,       # | | |x| | | | | |
                             1,  0,  0,  1,       # | |o| | | | | |o|
@@ -126,7 +127,7 @@ Team 2 turn.')
                             -1,  0, -1,  0,      # |x| | | |x| | | |
                             -1,  0,  0,  1,      # | |x| | | | | |o|
                             -1, -1, -1,  0]      # |x| |x| |x| | | |
-        self.assertEqual(test_state.is_jump(5, 2), False)
+        self.assertEqual(test_state.is_jump((5, 2)), False)
         self.assertEqual(test_state.can_jump(0), False)
         self.assertEqual(test_state.can_jump(2), False)
         self.assertEqual(test_state.can_jump(5), False)
@@ -144,26 +145,26 @@ Team 2 turn.')
                             -1,  0,  0,  0,      # | |x| | | | | | |
                             0,  0,  0,  2]       # | | | | | | |O| |
         test_state.turn = -1
-        self.assertEqual(test_state.is_valid(0, 0), False)
-        self.assertEqual(test_state.is_valid(0, 2), True)
-        self.assertEqual(test_state.is_valid(0, 3), True)
+        self.assertEqual(test_state.is_valid((0, 0)), False)
+        self.assertEqual(test_state.is_valid((0, 2)), True)
+        self.assertEqual(test_state.is_valid((0, 3)), True)
         test_state.turn = 1
-        self.assertEqual(test_state.is_valid(1, 2), True)
-        self.assertEqual(test_state.is_valid(1, 3), True)
-        self.assertEqual(test_state.is_valid(2, 3), False)
+        self.assertEqual(test_state.is_valid((1, 2)), True)
+        self.assertEqual(test_state.is_valid((1, 3)), True)
+        self.assertEqual(test_state.is_valid((2, 3)), False)
         test_state.turn = -1
-        self.assertEqual(test_state.is_valid(1, 3), False)
-        self.assertEqual(test_state.is_valid(3, 3), False)
+        self.assertEqual(test_state.is_valid((1, 3)), False)
+        self.assertEqual(test_state.is_valid((3, 3)), False)
         with self.assertRaises(TypeError):
-            test_state.is_valid([13, 1], 1)
-            test_state.is_valid(13, "one")
+            test_state.is_valid(([13, 1], 1))
+            test_state.is_valid((13, "one"))
         with self.assertRaises(ValueError):
-            test_state.is_valid(-3, 3)
-            test_state.is_valid(2, 5)
-        self.assertEqual(test_state.is_valid(13, 1), True)
+            test_state.is_valid((-3, 3))
+            test_state.is_valid((2, 5))
+        self.assertEqual(test_state.is_valid((13, 1)), True)
         test_state.cont = 24
-        self.assertEqual(test_state.is_valid(13, 1), False)
-        self.assertEqual(test_state.is_valid(24, 1), True)
+        self.assertEqual(test_state.is_valid((13, 1)), False)
+        self.assertEqual(test_state.is_valid((24, 1)), True)
         test_state.board = [-2,  1,  1,  0,      # | |X| |o| |o| | |
                             0,  1,  0,  2,       # | | |o| | | |O| |
                             0,  0,  0,  0,       # | | | | | | | | |
@@ -173,13 +174,13 @@ Team 2 turn.')
                             -1, -1,  0,  0,      # | |x| |x| | | | |
                             0,  0,  0,  2]       # | | | | | | |O| |
         test_state.cont = None
-        self.assertEqual(test_state.is_valid(0, 2), False)
-        self.assertEqual(test_state.is_valid(0, 3), True)
-        self.assertEqual(test_state.is_valid(18, 2), False)
-        self.assertEqual(test_state.is_valid(25, 0), False)
+        self.assertEqual(test_state.is_valid((0, 2)), False)
+        self.assertEqual(test_state.is_valid((0, 3)), True)
+        self.assertEqual(test_state.is_valid((18, 2)), False)
+        self.assertEqual(test_state.is_valid((25, 0)), False)
         test_state.turn = 1
-        self.assertEqual(test_state.is_valid(22, 2), True)
-        self.assertEqual(test_state.is_valid(22, 1), False)
+        self.assertEqual(test_state.is_valid((22, 2)), True)
+        self.assertEqual(test_state.is_valid((22, 1)), False)
 
     def test_get_valid_moves(self):
         test_state = checkers.game.Gamestate()
@@ -200,31 +201,31 @@ Team 2 turn.')
 
     def test_update(self):
         test_gamestate = checkers.game.Gamestate()
-        self.assertEqual(test_gamestate.update(10, 3), 1)
-        self.assertEqual(test_gamestate.update(22, 0), 1)
-        self.assertEqual(test_gamestate.update(15, 2), 1)
-        self.assertEqual(test_gamestate.update(25, 0), 1)
-        self.assertEqual(test_gamestate.update(9, 2), 1)
-        self.assertEqual(test_gamestate.update(26, 1), 1)
-        self.assertEqual(test_gamestate.update(7, 2), 1)
-        self.assertEqual(test_gamestate.update(18, 0), 1)
-        self.assertEqual(test_gamestate.update(11, 2), 2)
-        self.assertEqual(test_gamestate.update(18, 2), 1)
-        self.assertEqual(test_gamestate.update(29, 0), 1)
-        self.assertEqual(test_gamestate.update(8, 2), 1)
-        self.assertEqual(test_gamestate.update(23, 1), 1)
-        self.assertEqual(test_gamestate.update(10, 3), 1)
-        self.assertEqual(test_gamestate.update(18, 0), 1)
-        self.assertEqual(test_gamestate.update(4, 3), 1)
-        self.assertEqual(test_gamestate.update(31, 1), 1)
-        self.assertEqual(test_gamestate.update(3, 2), 1)
-        self.assertEqual(test_gamestate.update(22, 1), 1)
-        self.assertEqual(test_gamestate.update(13, 3), 2)
-        self.assertEqual(test_gamestate.update(22, 3), 1)
-        self.assertEqual(test_gamestate.update(30, 0), 1)
-        self.assertEqual(test_gamestate.update(31, 1), 1)
-        self.assertEqual(test_gamestate.update(20, 0), 1)
-        self.assertEqual(test_gamestate.update(22, 3), 1)
+        self.assertEqual(test_gamestate.update((10, 3)), None)
+        self.assertEqual(test_gamestate.update((22, 0)), None)
+        self.assertEqual(test_gamestate.update((15, 2)), None)
+        self.assertEqual(test_gamestate.update((25, 0)), None)
+        self.assertEqual(test_gamestate.update((9, 2)), None)
+        self.assertEqual(test_gamestate.update((26, 1)), None)
+        self.assertEqual(test_gamestate.update((7, 2)), None)
+        self.assertEqual(test_gamestate.update((18, 0)), None)
+        self.assertEqual(test_gamestate.update((11, 2)), None)
+        self.assertEqual(test_gamestate.update((18, 2)), None)
+        self.assertEqual(test_gamestate.update((29, 0)), None)
+        self.assertEqual(test_gamestate.update((8, 2)), None)
+        self.assertEqual(test_gamestate.update((23, 1)), None)
+        self.assertEqual(test_gamestate.update((10, 3)), None)
+        self.assertEqual(test_gamestate.update((18, 0)), None)
+        self.assertEqual(test_gamestate.update((4, 3)), None)
+        self.assertEqual(test_gamestate.update((31, 1)), None)
+        self.assertEqual(test_gamestate.update((3, 2)), None)
+        self.assertEqual(test_gamestate.update((22, 1)), None)
+        self.assertEqual(test_gamestate.update((13, 3)), None)
+        self.assertEqual(test_gamestate.update((22, 3)), None)
+        self.assertEqual(test_gamestate.update((30, 0)), None)
+        self.assertEqual(test_gamestate.update((31, 1)), None)
+        self.assertEqual(test_gamestate.update((20, 0)), None)
+        self.assertEqual(test_gamestate.update((22, 3)), None)
 
     def test_is_game_over(self):
         test_gamestate = checkers.game.Gamestate()
@@ -275,9 +276,33 @@ Team 2 turn.')
                                                            (17, 1),
                                                            (18, 1)])
 
+def plot_loss(prev_points, new_points, final=False):
+    ALPHA = 0.002
+    plt.clf()
+    plt.xlabel('Episodes')
+    plt.ylabel('Loss')
+    if not final:
+        plt.title('Training')
+        for point in new_points:
+            if not prev_points:
+                prev_points.append(point)
+            else:
+                prev_points.append(ALPHA * point + (1 - ALPHA) * prev_points[-1])
+        if len(prev_points) >= 10000:
+            plt.xlim(left=len(prev_points) - 10000, right=len(prev_points))
+        plt.plot(prev_points)
+        plt.pause(1)
+        plt.show()
+        return prev_points
+    else:
+        plt.title('Final Results')
+        plt.xlim(left=0, right=len(prev_points))
+        plt.plot(prev_points)
+        plt.show()
+
 
 if __name__ == "__main__":
     # unittest.main()
-    mask = torch.tensor([True, False, False, True], dtype=torch.bool)
-    test = torch.tensor([[1, 1], [2, 2], [3, 3], [4, 4]])
-    print(test[mask])
+    plot_list = [i for i in range(5000)]
+    new_list = [i for i in range(5000)]
+    plot_loss(plot_list, new_list, True)

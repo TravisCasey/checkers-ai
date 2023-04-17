@@ -1,0 +1,101 @@
+Using cuda.
+No model found, using default values.
+Generation: (0/500)
+Validating...
+Validation:
+Random: 5.0, Easy: 0.5, Medium: 0
+
+Generation: (25/500)
+Validating...
+Validation:
+Random: 7, Easy: 1.5, Medium: 1.0
+
+Generation: (50/500)
+Validating...
+Validation:
+Random: 9.5, Easy: 2.0, Medium: 0.5
+
+Generation: (75/500)
+Validating...
+Validation:
+Random: 9.5, Easy: 2.5, Medium: 1.0
+
+Generation: (100/500)
+Validating...
+Validation:
+Random: 9.0, Easy: 3.0, Medium: 1.5
+
+Generation: (125/500)
+Validating...
+Validation:
+Random: 9.5, Easy: 3.0, Medium: 2.5
+
+Generation: (150/500)
+Validating...
+Validation:
+Random: 8.5, Easy: 1.0, Medium: 1.5
+
+Generation: (175/500)
+Validating...
+Validation:
+Random: 10, Easy: 3.0, Medium: 1.0
+
+Generation: (200/500)
+Validating...
+Validation:
+Random: 9.0, Easy: 1.5, Medium: 1.5
+
+Generation: (225/500)
+Validating...
+Validation:
+Random: 10, Easy: 1.5, Medium: 1.0
+
+Generation: (250/500)
+Validating...
+Validation:
+Random: 8.5, Easy: 1.0, Medium: 2.5
+
+Generation: (275/500)
+Validating...
+Validation:
+Random: 10, Easy: 1.5, Medium: 1.0
+
+Generation: (300/500)
+Validating...
+Validation:
+Random: 10, Easy: 2.0, Medium: 2.0
+
+Generation: (325/500)
+Validating...
+Validation:
+Random: 8.5, Easy: 2.5, Medium: 1.0
+
+Generation: (350/500)
+Validating...
+Validation:
+Random: 9, Easy: 3.0, Medium: 3.5
+
+Generation: (375/500)
+Validating...
+Validation:
+Random: 10, Easy: 4.5, Medium: 3.0
+
+Generation: (400/500)
+Validating...
+Validation:
+Random: 9.5, Easy: 3.5, Medium: 2.5
+
+Generation: (425/500)
+Validating...
+Validation:
+Random: 9, Easy: 3.5, Medium: 3.0
+
+Generation: (450/500)
+Validating...
+Validation:
+Random: 9, Easy: 2.5, Medium: 1.5
+
+Generation: (475/500)
+Validating...
+Validation:
+Random: 10, Easy: 4.0, Medium: 2.0
