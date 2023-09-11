@@ -6,4 +6,6 @@ This project is a work in progress. The checkers package is fully useable; its d
 
 The current state of the model is used a feedforward network using fully connected layers. While this design does learn initially, it fails to improve signficantly against the other agents. This seems to vary little with different hyperparameters and architectures. The next steps are to instead implement a convolutional neural network (CNN) instead, as it more accurately represents the checkers board. Also, using the network to instead assess on a Monte Carlo tree rather than simply choosing the best move. This will allow the network continue to improve with self-play.
 
+These updates along with a greater array of agents are being implemented in a more general context in my [board games repo](https://github.com/TravisCasey/board-games). This abstracts out to any game with any number of players that can be played with a decision tree similar to checkers.
+
 Currently, checkers may be played using the checkers package by running the build.py module in the checkers package. The model can be customized and trained by running the model.py file in the repository.
